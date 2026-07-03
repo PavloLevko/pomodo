@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Помідорка — твій помічник з тайм-менеджменту</title>
+<style>
+  :root{
+    --bg-work:#1e2a3a;
+    --bg-work2:#16202e;
+    --bg-break:#2a4034;
+    --bg-break2:#1e3128;
+    --card:#ffffff10;
+    --ink:#f3efe8;
+    --ink-dim:#b8c0cc;
+    --tomato:#e94f3d;
+    --tomato-dark:#c53a2a;
+    --leaf:#5fae54;
+    --accent:#ffcf5c;
+    --ring-track:#ffffff22;
+    --radius:20px;
+    font-size:16px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:"Segoe UI",system-ui,-apple-system,sans-serif;
+    background:radial-gradient(ellipse at 50% 0%, var(--bg-work) 0%, var(--bg-work2) 70%);
+    color:var(--ink);
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:24px 16px 48px;
+    transition:background 1.2s ease;
+  }
+  body.mode-break{
+    background:radial-gradient(ellipse at 50% 0%, var(--bg-break) 0%, var(--bg-break2) 70%);
+  }
+  h1{
+    font-size:1.55rem;
+    font-weight:600;
+    letter-spacing:.02em;
+    margin-bottom:4px;
+    text-align:center;
+  }
+  .subtitle{color:var(--ink-dim);font-size:.95rem;margin-bottom:28px;text-align:center}
+
+  /* ---------- Сцена з персонажем ---------- */
+  .stage{
+    position:relative;
+    width:300px;
+    height:300px;
+    margin-bottom:8px;
+  }
+  .ring{position:absolute;inset:0;transform:rotate(-90deg)}
+  .ring circle{fill:none;stroke-width:10;stroke-linecap:round}
+  .ring .track{stroke:var(--ring-track)}
+  .ring .progress{
+    stroke:var(--tomato);
+    transition:stroke-dashoffset .5s linear, stroke .8s ease;
+  }
+  body.mode-break .ring .progress{stroke:var(--leaf)}
+
+  .character{
+    position:absolute;
+    inset:36px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .tomato-svg{width:100%;height:100%;overflow:visible}
+
+  /* анімації персонажа */
+  .tomato-body{transform-origin:100px 120px}
+  .idle .tomato-body{animation:breathe 3.4s ease-in-out infinite}
+  .working .tomato-body{animation:focusBob 2.2s ease-in-out infinite}
+  .break .tomato-body{animation:relaxSway 3s ease-in-out infinite}
+  .celebrate .tomato-body{animation:jump .6s ease-in-out 3}
+
+  @keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.03)}}
+  @keyframes focusBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+  @keyframes relaxSway{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(3deg)}}
+  @keyframes jump{0%,100%{transform:translateY(0) scale(1)}40%{transform:translateY(-26px) scale(1.05,.97)}60%{transform:translateY(-20px)}}
+
+  .eyes{transform-origin:center}
+  .blink{animation:blink 4.5s infinite}
+  @keyframes blink{0%,94%,100%{transform:scaleY(1)}96%{transform:scaleY(.08)}}
+
+  .leaf-group{transform-origin:100px 42px}
+  .celebrate .leaf-group,.break .leaf-group{animation:leafWiggle 1.4s ease-in-out infinite}
+  @keyframes leafWiggle{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(6deg)}}
+
+  /* рот — стани */
+  .mouth-happy,.mouth-focus,.mouth-relax,.mouth-cheer{opacity:0;transition:opacity .3s}
+  .idle .mouth-happy{opacity:1}
+  .working .mouth-focus{opacity:1}
+  .break .mouth-relax{opacity:1}
+  .celebrate .mouth-cheer{opacity:1}
+
+  /* окуляри в режимі роботи */
+  .glasses{opacity:0;transition:opacity .4s}
+  .working .glasses{opacity:1}
+
+  /* чашка на відпочинку */
+  .cup{opacity:0;transition:opacity .4s;transform-origin:158px 130px}
+  .break .cup{opacity:1;animation:cupSip 3s ease-in-out infinite}
+  @keyframes cupSip{0%,100%{transform:rotate(0)}50%{transform:rotate(-8deg)}}
+
+  /* конфеті */
+  .confetti{
+    position:absolute;
+    top:0;left:50%;
+    width:8px;height:14px;
+    opacity:0;
+    border-radius:2px;
+    pointer-events:none;
+  }
+  .celebrate-fx .confetti{animation:confettiFall 1.6s ease-out forwards}
+  @keyframes confettiFall{
+    0%{opacity:1;transform:translate(0,0) rotate(0)}
+    100%{opacity:0;transform:translate(var(--dx),240px) rotate(var(--rot))}
+  }
+
+  /* ---------- Хмарка з реплікою ---------- */
+  .bubble{
+    position:relative;
+    max-width:340px;
+    min-height:56px;
+    background:var(--ink);
+    color:#26303c;
+    border-radius:16px;
+    padding:12px 18px;
+    font-size:1rem;
+    line-height:1.4;
+    text-align:center;
+    margin-bottom:26px;
+    box-shadow:0 6px 18px #0004;
+    transition:transform .25s ease, opacity .25s ease;
+  }
+  .bubble::before{
+    content:"";
+    position:absolute;
+    top:-9px;left:50%;
+    transform:translateX(-50%);
+    border:10px solid transparent;
+    border-bottom-color:var(--ink);
+    border-top:0;
+  }
+  .bubble.pop{animation:bubblePop .35s ease}
+  @keyframes bubblePop{0%{transform:scale(.85);opacity:.4}100%{transform:scale(1);opacity:1}}
+
+  /* ---------- Таймер ---------- */
+  .timer{
+    font-variant-numeric:tabular-nums;
+    font-size:3.2rem;
+    font-weight:700;
+    letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+  .phase-label{
+    color:var(--ink-dim);
+    font-size:.95rem;
+    text-transform:uppercase;
+    letter-spacing:.14em;
+    margin-bottom:22px;
+  }
+
+  /* ---------- Керування ---------- */
+  .controls{display:flex;gap:12px;margin-bottom:30px}
+  button{
+    font-family:inherit;
+    font-size:1rem;
+    font-weight:600;
+    border:none;
+    border-radius:999px;
+    padding:12px 30px;
+    cursor:pointer;
+    transition:transform .15s ease, box-shadow .15s ease, background .3s;
+  }
+  button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+  button:active{transform:scale(.96)}
+  .btn-primary{background:var(--tomato);color:#fff;box-shadow:0 4px 14px #e94f3d55}
+  .btn-primary:hover{background:var(--tomato-dark)}
+  body.mode-break .btn-primary{background:var(--leaf);box-shadow:0 4px 14px #5fae5455}
+  .btn-ghost{background:#ffffff18;color:var(--ink)}
+  .btn-ghost:hover{background:#ffffff2c}
+
+  /* ---------- Налаштування ---------- */
+  .settings{
+    background:var(--card);
+    border:1px solid #ffffff1a;
+    border-radius:var(--radius);
+    padding:20px 24px;
+    display:flex;
+    gap:20px;
+    flex-wrap:wrap;
+    justify-content:center;
+    margin-bottom:24px;
+    backdrop-filter:blur(6px);
+  }
+  .field{display:flex;flex-direction:column;gap:6px;min-width:120px}
+  .field label{font-size:.82rem;color:var(--ink-dim);letter-spacing:.03em}
+  .field input{
+    font-family:inherit;
+    font-size:1.05rem;
+    font-weight:600;
+    color:var(--ink);
+    background:#ffffff12;
+    border:1px solid #ffffff26;
+    border-radius:10px;
+    padding:9px 12px;
+    width:120px;
+    text-align:center;
+  }
+  .field input:focus-visible{outline:3px solid var(--accent);outline-offset:1px;border-color:transparent}
+  .field input:disabled{opacity:.5}
+
+  /* ---------- Статистика ---------- */
+  .stats{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    color:var(--ink-dim);
+    font-size:.95rem;
+  }
+  .tomato-count{font-size:1.2rem;letter-spacing:2px;min-height:1.4em}
+
+  /* ---------- Макет з бічною панеллю ---------- */
+  .layout{
+    display:flex;
+    gap:32px;
+    align-items:flex-start;
+    justify-content:center;
+    flex-wrap:wrap;
+    width:100%;
+    max-width:1100px;
+  }
+  .app{display:flex;flex-direction:column;align-items:center}
+
+  /* ---------- Чек-ліст ---------- */
+  .todo-panel{
+    background:var(--card);
+    border:1px solid #ffffff1a;
+    border-radius:var(--radius);
+    padding:22px;
+    width:320px;
+    backdrop-filter:blur(6px);
+    position:sticky;
+    top:24px;
+  }
+  .todo-panel h2{
+    font-size:1.05rem;
+    font-weight:600;
+    margin-bottom:4px;
+  }
+  .todo-hint{
+    color:var(--ink-dim);
+    font-size:.82rem;
+    margin-bottom:14px;
+  }
+  .todo-add{display:flex;gap:8px;margin-bottom:14px}
+  .todo-add input{
+    flex:1;
+    font-family:inherit;
+    font-size:.95rem;
+    color:var(--ink);
+    background:#ffffff12;
+    border:1px solid #ffffff26;
+    border-radius:10px;
+    padding:9px 12px;
+    min-width:0;
+  }
+  .todo-add input:focus-visible{outline:3px solid var(--accent);outline-offset:1px;border-color:transparent}
+  .todo-add input::placeholder{color:#ffffff55}
+  .btn-add{
+    padding:9px 16px;
+    font-size:1.1rem;
+    line-height:1;
+    background:var(--tomato);
+    color:#fff;
+    flex-shrink:0;
+  }
+  .btn-add:hover{background:var(--tomato-dark)}
+  .btn-add:disabled{opacity:.4;cursor:not-allowed}
+  body.mode-break .btn-add{background:var(--leaf)}
+
+  .todo-table{width:100%;border-collapse:collapse}
+  .todo-table td{
+    padding:10px 6px;
+    border-bottom:1px solid #ffffff14;
+    vertical-align:middle;
+  }
+  .todo-table tr:last-child td{border-bottom:none}
+  .todo-num{
+    width:26px;
+    color:var(--ink-dim);
+    font-size:.82rem;
+    font-variant-numeric:tabular-nums;
+  }
+  .todo-check-cell{width:36px}
+
+  /* кругла кнопка-перемикач */
+  .todo-check{
+    appearance:none;
+    -webkit-appearance:none;
+    width:24px;height:24px;
+    border-radius:50%;
+    border:2px solid #ffffff66;
+    background:transparent;
+    cursor:pointer;
+    display:block;
+    position:relative;
+    transition:background .2s, border-color .2s, transform .15s;
+  }
+  .todo-check:hover{border-color:var(--accent);transform:scale(1.08)}
+  .todo-check:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+  .todo-check:checked{
+    background:var(--leaf);
+    border-color:var(--leaf);
+  }
+  .todo-check:checked::after{
+    content:"";
+    position:absolute;
+    left:7px;top:3px;
+    width:6px;height:11px;
+    border:solid #fff;
+    border-width:0 3px 3px 0;
+    transform:rotate(45deg);
+  }
+  .todo-text{
+    font-size:.95rem;
+    line-height:1.35;
+    word-break:break-word;
+    transition:color .25s;
+  }
+  tr.done .todo-text{
+    color:var(--ink-dim);
+    text-decoration:line-through;
+    text-decoration-color:#ffffff55;
+  }
+  .todo-del-cell{width:30px;text-align:right}
+  .todo-del{
+    background:none;
+    border:none;
+    color:#ffffff55;
+    font-size:1.1rem;
+    padding:4px 6px;
+    border-radius:8px;
+    line-height:1;
+  }
+  .todo-del:hover{color:var(--tomato);background:#ffffff14}
+  .todo-empty{
+    color:var(--ink-dim);
+    font-size:.9rem;
+    text-align:center;
+    padding:14px 0;
+  }
+  .todo-progress{
+    margin-top:14px;
+    color:var(--ink-dim);
+    font-size:.85rem;
+    text-align:center;
+  }
+
+  @media (max-width:760px){
+    .todo-panel{width:100%;max-width:420px;position:static}
+  }
+  @media (max-width:420px){
+    .stage{width:250px;height:250px}
+    .timer{font-size:2.6rem}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation:none !important;transition:none !important}
+  }
+</style>
+</head>
+<body>
+
+<h1>🍅 Помідорка</h1>
+<p class="subtitle">Твій персональний помічник із тайм-менеджменту</p>
+
+<div class="layout">
+<main class="app">
+
+<div class="stage" id="stage">
+  <svg class="ring" viewBox="0 0 300 300" aria-hidden="true">
+    <circle class="track" cx="150" cy="150" r="140"/>
+    <circle class="progress" id="ringProgress" cx="150" cy="150" r="140"/>
+  </svg>
+
+  <div class="character idle" id="character">
+    <svg class="tomato-svg" viewBox="0 0 200 200" aria-hidden="true">
+      <g class="tomato-body">
+        <!-- листя -->
+        <g class="leaf-group">
+          <path d="M100 46 C 84 20, 60 24, 58 40 C 74 38, 86 44, 100 46" fill="var(--leaf)"/>
+          <path d="M100 46 C 116 20, 140 24, 142 40 C 126 38, 114 44, 100 46" fill="var(--leaf)"/>
+          <path d="M100 48 C 96 30, 100 20, 108 14 C 106 26, 106 38, 102 48" fill="#4c9143"/>
+        </g>
+        <!-- тіло -->
+        <ellipse cx="100" cy="118" rx="72" ry="66" fill="var(--tomato)"/>
+        <ellipse cx="100" cy="118" rx="72" ry="66" fill="url(#shade)" opacity=".25"/>
+        <ellipse cx="74" cy="94" rx="20" ry="12" fill="#ffffff" opacity=".28" transform="rotate(-18 74 94)"/>
+        <!-- щічки -->
+        <ellipse cx="62" cy="132" rx="10" ry="6.5" fill="#ff9c8a" opacity=".85"/>
+        <ellipse cx="138" cy="132" rx="10" ry="6.5" fill="#ff9c8a" opacity=".85"/>
+        <!-- очі -->
+        <g class="eyes blink">
+          <circle cx="78" cy="114" r="7.5" fill="#2b2320"/>
+          <circle cx="122" cy="114" r="7.5" fill="#2b2320"/>
+          <circle cx="80.5" cy="111.5" r="2.4" fill="#fff"/>
+          <circle cx="124.5" cy="111.5" r="2.4" fill="#fff"/>
+        </g>
+        <!-- окуляри (режим роботи) -->
+        <g class="glasses" stroke="#2b2320" stroke-width="3.4" fill="#ffffff22">
+          <circle cx="78" cy="114" r="14"/>
+          <circle cx="122" cy="114" r="14"/>
+          <line x1="92" y1="114" x2="108" y2="114"/>
+          <line x1="64" y1="110" x2="52" y2="104"/>
+          <line x1="136" y1="110" x2="148" y2="104"/>
+        </g>
+        <!-- роти -->
+        <path class="mouth-happy" d="M86 140 Q100 152 114 140" stroke="#2b2320" stroke-width="4" fill="none" stroke-linecap="round"/>
+        <path class="mouth-focus" d="M90 144 L110 144" stroke="#2b2320" stroke-width="4" fill="none" stroke-linecap="round"/>
+        <path class="mouth-relax" d="M92 142 Q100 148 108 142" stroke="#2b2320" stroke-width="4" fill="none" stroke-linecap="round"/>
+        <path class="mouth-cheer" d="M84 138 Q100 160 116 138 Z" fill="#7a2018" stroke="#2b2320" stroke-width="3"/>
+        <!-- чашка (відпочинок) -->
+        <g class="cup">
+          <rect x="148" y="118" width="22" height="24" rx="5" fill="#f3efe8"/>
+          <path d="M170 122 q12 5 0 14" stroke="#f3efe8" stroke-width="4" fill="none"/>
+          <path d="M154 112 q3 -6 0 -10 M162 112 q3 -6 0 -10" stroke="#ffffff99" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+        </g>
+      </g>
+      <defs>
+        <radialGradient id="shade" cx=".5" cy=".35" r=".8">
+          <stop offset="60%" stop-color="#000" stop-opacity="0"/>
+          <stop offset="100%" stop-color="#000" stop-opacity=".55"/>
+        </radialGradient>
+      </defs>
+    </svg>
+  </div>
+</div>
+
+<div class="bubble" id="bubble" aria-live="polite">Привіт! Налаштуй час і натисни «Почати» 🌱</div>
+
+<div class="timer" id="timerDisplay">25:00</div>
+<div class="phase-label" id="phaseLabel">Готовий до роботи</div>
+
+<div class="controls">
+  <button class="btn-primary" id="startBtn">Почати</button>
+  <button class="btn-ghost" id="resetBtn">Скинути</button>
+</div>
+
+<div class="settings">
+  <div class="field">
+    <label for="workInput">Робота (хв)</label>
+    <input type="number" id="workInput" min="1" max="120" value="25">
+  </div>
+  <div class="field">
+    <label for="breakInput">Відпочинок (хв)</label>
+    <input type="number" id="breakInput" min="1" max="60" value="5">
+  </div>
+</div>
+
+<div class="stats">
+  <span>Завершені цикли:</span>
+  <span class="tomato-count" id="tomatoCount">—</span>
+</div>
+
+</main>
+
+<aside class="todo-panel">
+  <h2>📋 Важливі справи на сьогодні</h2>
+  <p class="todo-hint">Максимум 7 справ. Познач кружечок, коли виконаєш.</p>
+
+  <div class="todo-add">
+    <input type="text" id="todoInput" maxlength="80" placeholder="Нова справа…" aria-label="Нова справа">
+    <button class="btn-add" id="todoAddBtn" aria-label="Додати справу">+</button>
+  </div>
+
+  <table class="todo-table" aria-label="Чек-ліст справ">
+    <tbody id="todoBody"></tbody>
+  </table>
+  <p class="todo-empty" id="todoEmpty">Поки що порожньо. Додай першу справу 👆</p>
+  <p class="todo-progress" id="todoProgress"></p>
+</aside>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- Елементи ----------
+  const body = document.body;
+  const character = document.getElementById("character");
+  const stage = document.getElementById("stage");
+  const bubble = document.getElementById("bubble");
+  const timerDisplay = document.getElementById("timerDisplay");
+  const phaseLabel = document.getElementById("phaseLabel");
+  const startBtn = document.getElementById("startBtn");
+  const resetBtn = document.getElementById("resetBtn");
+  const workInput = document.getElementById("workInput");
+  const breakInput = document.getElementById("breakInput");
+  const tomatoCount = document.getElementById("tomatoCount");
+  const ring = document.getElementById("ringProgress");
+
+  const CIRC = 2 * Math.PI * 140;
+  ring.style.strokeDasharray = CIRC;
+  ring.style.strokeDashoffset = 0;
+
+  // ---------- Стан ----------
+  let phase = "idle";        // idle | work | break
+  let running = false;
+  let remaining = 25 * 60;   // сек
+  let total = 25 * 60;
+  let completedCycles = 0;
+  let tickId = null;
+
+  // ---------- Репліки персонажа ----------
+  const PHRASES = {
+    startWork: [
+      "Час зосередитись! Я поруч 💪",
+      "Поїхали! Фокус на завданні 🎯",
+      "Вимикаємо відволікання — працюємо!"
+    ],
+    startBreak: [
+      "Дзинь! Час зробити перерву ☕",
+      "Стоп-стоп, відпочинок — це теж робота 😉",
+      "Перерва! Встань, потягнись, попий води 💧"
+    ],
+    praiseWork: [
+      "Ти молодець! Цілу сесію без зупинок 🌟",
+      "Вау, справжня дисципліна! Пишаюся тобою 🏆",
+      "Чудова робота! Ти заслужив(ла) відпочинок 👏"
+    ],
+    praiseBreak: [
+      "Клас, ти відпочив(ла) як слід! Повертаємось 🔄",
+      "Ідеальний баланс роботи й відпочинку! Так тримати 💚",
+      "Ти дотримуєшся розпорядку — це круто! Далі за роботу 🚀"
+    ],
+    paused: ["Пауза. Я почекаю тут 🙂", "Гаразд, перепочинемо хвилинку."],
+    reset: ["Починаємо з чистого аркуша 🌱", "Скинуто! Готовий, коли ти готовий(а)."]
+  };
+
+  function pick(list){ return list[Math.floor(Math.random() * list.length)]; }
+
+  function say(text){
+    bubble.textContent = text;
+    bubble.classList.remove("pop");
+    void bubble.offsetWidth; // перезапуск анімації
+    bubble.classList.add("pop");
+  }
+
+  // ---------- Звук ----------
+  let audioCtx = null;
+  function beep(pattern){
+    try{
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      let t = audioCtx.currentTime;
+      pattern.forEach(([freq, dur]) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.exponentialRampToValueAtTime(0.25, t + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        osc.connect(gain).connect(audioCtx.destination);
+        osc.start(t);
+        osc.stop(t + dur + 0.05);
+        t += dur + 0.08;
+      });
+    }catch(e){ /* звук недоступний — не критично */ }
+  }
+  const SOUND_BREAK = [[880, .18],[660, .18],[880, .3]];
+  const SOUND_WORK  = [[523, .18],[659, .18],[784, .3]];
+
+  // ---------- Персонаж ----------
+  function setCharacter(state){ // idle | working | break | celebrate
+    character.classList.remove("idle","working","break","celebrate");
+    character.classList.add(state);
+  }
+
+  function celebrate(nextState){
+    setCharacter("celebrate");
+    spawnConfetti();
+    setTimeout(() => setCharacter(nextState), 1900);
+  }
+
+  const CONFETTI_COLORS = ["#ffcf5c","#e94f3d","#5fae54","#6db9ff","#ff9c8a"];
+  function spawnConfetti(){
+    stage.classList.remove("celebrate-fx");
+    stage.querySelectorAll(".confetti").forEach(el => el.remove());
+    for(let i = 0; i < 22; i++){
+      const c = document.createElement("span");
+      c.className = "confetti";
+      c.style.background = CONFETTI_COLORS[i % CONFETTI_COLORS.length];
+      c.style.setProperty("--dx", (Math.random() * 260 - 130) + "px");
+      c.style.setProperty("--rot", (Math.random() * 540 - 270) + "deg");
+      c.style.animationDelay = (Math.random() * 0.25) + "s";
+      stage.appendChild(c);
+    }
+    void stage.offsetWidth;
+    stage.classList.add("celebrate-fx");
+  }
+
+  // ---------- Таймер ----------
+  function fmt(sec){
+    const m = String(Math.floor(sec / 60)).padStart(2, "0");
+    const s = String(sec % 60).padStart(2, "0");
+    return m + ":" + s;
+  }
+
+  function render(){
+    timerDisplay.textContent = fmt(remaining);
+    ring.style.strokeDashoffset = CIRC * (1 - remaining / total);
+    document.title = (running ? fmt(remaining) + " — " : "") + "Помідорка";
+  }
+
+  function startPhase(newPhase){
+    phase = newPhase;
+    const mins = newPhase === "work"
+      ? clampInput(workInput, 1, 120)
+      : clampInput(breakInput, 1, 60);
+    total = remaining = mins * 60;
+
+    if(newPhase === "work"){
+      body.classList.remove("mode-break");
+      phaseLabel.textContent = "Робота";
+      setCharacter("working");
+      say(pick(PHRASES.startWork));
+    }else{
+      body.classList.add("mode-break");
+      phaseLabel.textContent = "Відпочинок";
+      setCharacter("break");
+      say(pick(PHRASES.startBreak));
+    }
+    render();
+  }
+
+  function tick(){
+    remaining--;
+    if(remaining <= 0){
+      remaining = 0;
+      render();
+      onPhaseComplete();
+      return;
+    }
+    render();
+  }
+
+  function onPhaseComplete(){
+    if(phase === "work"){
+      completedCycles++;
+      updateStats();
+      beep(SOUND_BREAK);
+      say(pick(PHRASES.praiseWork));
+      celebrate("break");
+      setTimeout(() => {
+        say(pick(PHRASES.startBreak));
+      }, 2200);
+      startPhaseSilent("break");
+    }else{
+      beep(SOUND_WORK);
+      say(pick(PHRASES.praiseBreak));
+      celebrate("working");
+      startPhaseSilent("work");
+    }
+  }
+
+  // перемикання фази без перезапису репліки-похвали
+  function startPhaseSilent(newPhase){
+    phase = newPhase;
+    const mins = newPhase === "work"
+      ? clampInput(workInput, 1, 120)
+      : clampInput(breakInput, 1, 60);
+    total = remaining = mins * 60;
+    body.classList.toggle("mode-break", newPhase === "break");
+    phaseLabel.textContent = newPhase === "work" ? "Робота" : "Відпочинок";
+    render();
+  }
+
+  function updateStats(){
+    tomatoCount.textContent = completedCycles > 0
+      ? "🍅".repeat(Math.min(completedCycles, 12)) + (completedCycles > 12 ? " ×" + completedCycles : "")
+      : "—";
+  }
+
+  function clampInput(input, min, max){
+    let v = parseInt(input.value, 10);
+    if(isNaN(v)) v = min;
+    v = Math.max(min, Math.min(max, v));
+    input.value = v;
+    return v;
+  }
+
+  // ---------- Керування ----------
+  startBtn.addEventListener("click", () => {
+    if(!running){
+      running = true;
+      startBtn.textContent = "Пауза";
+      workInput.disabled = breakInput.disabled = true;
+      if(phase === "idle") startPhase("work");
+      else setCharacter(phase === "work" ? "working" : "break");
+      tickId = setInterval(tick, 1000);
+    }else{
+      running = false;
+      startBtn.textContent = "Продовжити";
+      clearInterval(tickId);
+      setCharacter("idle");
+      say(pick(PHRASES.paused));
+      document.title = "Помідорка";
+    }
+  });
+
+  resetBtn.addEventListener("click", () => {
+    running = false;
+    clearInterval(tickId);
+    phase = "idle";
+    startBtn.textContent = "Почати";
+    workInput.disabled = breakInput.disabled = false;
+    body.classList.remove("mode-break");
+    total = remaining = clampInput(workInput, 1, 120) * 60;
+    phaseLabel.textContent = "Готовий до роботи";
+    setCharacter("idle");
+    say(pick(PHRASES.reset));
+    render();
+  });
+
+  workInput.addEventListener("change", () => {
+    if(phase === "idle"){
+      total = remaining = clampInput(workInput, 1, 120) * 60;
+      render();
+    }
+  });
+  breakInput.addEventListener("change", () => clampInput(breakInput, 1, 60));
+
+  // ---------- Чек-ліст справ ----------
+  const MAX_TODOS = 7;
+  const todoInput = document.getElementById("todoInput");
+  const todoAddBtn = document.getElementById("todoAddBtn");
+  const todoBody = document.getElementById("todoBody");
+  const todoEmpty = document.getElementById("todoEmpty");
+  const todoProgress = document.getElementById("todoProgress");
+
+  let todos = []; // {id, text, done}
+  let nextId = 1;
+
+  const TODO_PRAISE = [
+    "Ще одна справа виконана! Так тримати 🎉",
+    "Супер! Ти рухаєшся вперед 🚶‍♂️💨",
+    "Викреслено! Кайфую від твоєї продуктивності 😎"
+  ];
+  const TODO_ALL_DONE = [
+    "ВСІ справи виконано! Ти сьогодні герой дня 🏅",
+    "Неймовірно — весь список закрито! Пишаюся тобою 🤩"
+  ];
+
+  function renderTodos(){
+    todoBody.innerHTML = "";
+    todos.forEach((t, i) => {
+      const tr = document.createElement("tr");
+      if(t.done) tr.classList.add("done");
+
+      const tdNum = document.createElement("td");
+      tdNum.className = "todo-num";
+      tdNum.textContent = (i + 1) + ".";
+
+      const tdCheck = document.createElement("td");
+      tdCheck.className = "todo-check-cell";
+      const check = document.createElement("input");
+      check.type = "checkbox";
+      check.className = "todo-check";
+      check.checked = t.done;
+      check.setAttribute("aria-label", "Виконано: " + t.text);
+      check.addEventListener("change", () => toggleTodo(t.id, check.checked));
+      tdCheck.appendChild(check);
+
+      const tdText = document.createElement("td");
+      tdText.className = "todo-text";
+      tdText.textContent = t.text;
+
+      const tdDel = document.createElement("td");
+      tdDel.className = "todo-del-cell";
+      const del = document.createElement("button");
+      del.className = "todo-del";
+      del.textContent = "✕";
+      del.setAttribute("aria-label", "Видалити: " + t.text);
+      del.addEventListener("click", () => removeTodo(t.id));
+      tdDel.appendChild(del);
+
+      tr.append(tdNum, tdCheck, tdText, tdDel);
+      todoBody.appendChild(tr);
+    });
+
+    todoEmpty.style.display = todos.length ? "none" : "";
+    const done = todos.filter(t => t.done).length;
+    todoProgress.textContent = todos.length
+      ? "Виконано " + done + " з " + todos.length
+      : "";
+    todoAddBtn.disabled = todos.length >= MAX_TODOS;
+    todoInput.disabled = todos.length >= MAX_TODOS;
+    todoInput.placeholder = todos.length >= MAX_TODOS
+      ? "Досягнуто ліміт 7 справ"
+      : "Нова справа…";
+  }
+
+  function addTodo(){
+    const text = todoInput.value.trim();
+    if(!text) return;
+    if(todos.length >= MAX_TODOS){
+      say("Ліміт — 7 важливих справ. Фокус понад усе! 🎯");
+      return;
+    }
+    todos.push({ id: nextId++, text: text, done: false });
+    todoInput.value = "";
+    renderTodos();
+    todoInput.focus();
+  }
+
+  function toggleTodo(id, done){
+    const t = todos.find(x => x.id === id);
+    if(!t) return;
+    t.done = done;
+    renderTodos();
+    if(done){
+      const allDone = todos.length > 0 && todos.every(x => x.done);
+      say(pick(allDone ? TODO_ALL_DONE : TODO_PRAISE));
+      const back = running ? (phase === "work" ? "working" : "break") : "idle";
+      celebrate(back);
+    }
+  }
+
+  function removeTodo(id){
+    todos = todos.filter(x => x.id !== id);
+    renderTodos();
+  }
+
+  todoAddBtn.addEventListener("click", addTodo);
+  todoInput.addEventListener("keydown", e => {
+    if(e.key === "Enter") addTodo();
+  });
+
+  renderTodos();
+  render();
+})();
+</script>
+</body>
+</html>
